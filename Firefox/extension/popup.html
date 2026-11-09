@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Splyt</title>
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    body { width: 360px; padding: 12px; }
+    header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    #effective { font-size: 15px; font-weight: 600; }
+    #source { margin: 0 0 10px; }
+    .row { padding: 8px 0; border-top: 1px solid var(--line); }
+    .row-title { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+    .row-title span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #notice { margin: 0 0 8px; }
+    footer { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 8px; }
+    footer button { background: none; border: 0; padding: 0; color: var(--vpn); cursor: pointer; }
+    [hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <span id="effective">Splyt</span>
+  </header>
+  <p id="source" class="muted"></p>
+  <p id="notice" class="warning" hidden></p>
+  <main id="rows"></main>
+  <footer>
+    <button id="reload" type="button">Reload tab to apply</button>
+    <button id="settings" type="button">Settings</button>
+  </footer>
+  <script src="popup.js"></script>
+</body>
+</html>

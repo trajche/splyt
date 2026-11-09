@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Splyt Settings</title>
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    body { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; font-size: 14px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 28px 0 6px; }
+    p { margin: 0 0 8px; }
+    label { display: block; }
+    input[type="text"], input[type="password"], textarea {
+      width: 100%;
+      padding: 6px 8px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+    textarea { min-height: 120px; font-family: ui-monospace, monospace; font-size: 13px; }
+    .inline { display: flex; gap: 8px; margin-top: 6px; }
+    .inline input { flex: 1; min-width: 0; }
+    .action { padding: 6px 12px; background: var(--raised); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+    .list-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+    .list-row span { overflow-wrap: anywhere; }
+    .check { display: flex; gap: 8px; align-items: flex-start; }
+  </style>
+</head>
+<body>
+  <h1>Splyt</h1>
+  <p class="muted">These settings belong to this Firefox profile. Install Splyt in each profile to give it its own rules.</p>
+
+  <h2>Pairing</h2>
+  <p>Turn on Browser proxy in Splyt's settings on your Mac, then copy the pairing code here.</p>
+  <p id="pair-status" class="muted" role="status"></p>
+  <form id="pair" class="inline">
+    <input id="code" type="password" autocomplete="off" aria-label="Pairing code" placeholder="Pairing code">
+    <button class="action" type="submit">Pair</button>
+  </form>
+
+  <h2>Site rules</h2>
+  <p class="muted">A site rule covers subdomains and everything a page on that site loads.</p>
+  <form id="add-site" class="inline">
+    <input id="site" type="text" autocomplete="off" aria-label="Site" placeholder="example.com">
+    <button class="action" type="submit">Add</button>
+  </form>
+  <div id="sites"></div>
+
+  <h2>Container rules</h2>
+  <div id="containers"></div>
+
+  <h2>Leak protection</h2>
+  <label class="check">
+    <input id="leak" type="checkbox">
+    <span>Keep WebRTC on the proxy and turn off speculative connections. Some video calls may need this turned off.</span>
+  </label>
+
+  <h2>Always normal route</h2>
+  <p class="muted">One domain per line, subdomains included. Private addresses are always included. Blocked tabs still block these.</p>
+  <textarea id="bypass" spellcheck="false" aria-label="Domains that keep their normal route"></textarea>
+  <div class="inline"><button id="save-bypass" class="action" type="button">Save</button></div>
+
+  <script src="rules.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

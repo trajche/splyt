@@ -1,0 +1,54 @@
+{
+  "manifest_version": 2,
+  "name": "Splyt",
+  "version": "0.1.0",
+  "description": "Route each tab, site, container or profile through your VPN, directly, or block it. Requires the Splyt Mac app.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "splyt@firefox",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      },
+      "update_url": "https://raw.githubusercontent.com/trajche/splyt-firefox/main/updates.json"
+    }
+  },
+  "permissions": [
+    "proxy",
+    "tabs",
+    "storage",
+    "sessions",
+    "cookies",
+    "contextualIdentities",
+    "privacy",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "rules.js",
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_title": "Splyt",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
+}

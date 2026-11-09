@@ -1,0 +1,25 @@
+.DS_Store
+.build/
+.swiftpm/
+build/
+DerivedData/
+*.xcodeproj/
+xcuserdata/
+
+# Fetched and patched by scripts/build-wireguard.sh
+Vendor/
+
+# Firefox signing credentials and outputs
+Firefox/.env
+Firefox/.amo-upload-uuid
+Firefox/extension/.amo-upload-uuid
+Firefox/web-ext-artifacts/
+node_modules/
+
+# Secrets that must never be committed
+*.conf
+*.p8
+*.p12
+*.provisionprofile
+*.mobileprovision
+.env
