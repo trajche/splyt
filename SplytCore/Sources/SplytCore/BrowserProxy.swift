@@ -229,6 +229,9 @@ private final class SOCKSSession {
     private let queue = DispatchQueue(label: "com.amplify2.splyt.socks")
     private var handshake: SOCKSHandshake
     private var bridge: TCPBridge?
+    /// The client may send its request, data and FIN in one go. Network reports that
+    /// end once; later receives fail with ENODATA instead of reporting it again.
+    private var clientFinished = false
     private var timer: DispatchSourceTimer?
     private var ended = false
 
@@ -284,6 +287,7 @@ private final class SOCKSSession {
                 return
             }
             var proceed = false
+            self.clientFinished = isComplete
             if let data, !data.isEmpty {
                 proceed = self.apply(self.handshake.consume(data))
             }
@@ -330,7 +334,7 @@ private final class SOCKSSession {
         let hooks = hooks
         hooks.opened(route, host)
         let bridge = TCPBridge(
-            flow: SOCKSClientFlow(connection: connection, leftover: leftover),
+            flow: SOCKSClientFlow(connection: connection, leftover: leftover, finished: clientFinished),
             targets: plan.targets, interface: plan.interface,
             onBytes: { hooks.bytes(route, $0, $1) },
             onFinish: { [weak self] in
@@ -383,13 +387,16 @@ private final class SOCKSClientFlow: TCPFlowIO {
 
     private let connection: NWConnection
     private var leftover: Data
+    /// Whether the client has finished sending, so reads after `leftover` are at EOF.
+    private var finished: Bool
     private var opened = false
     private var readClosed = false
     private var writeClosed = false
 
-    init(connection: NWConnection, leftover: Data) {
+    init(connection: NWConnection, leftover: Data, finished: Bool) {
         self.connection = connection
         self.leftover = leftover
+        self.finished = finished
     }
 
     func open(completion: @escaping (Error?) -> Void) {
@@ -404,7 +411,16 @@ private final class SOCKSClientFlow: TCPFlowIO {
             completion(data, nil)
             return
         }
-        connection.receive(minimumIncompleteLength: 1, maximumLength: Self.maxChunk) { data, _, _, error in
+        guard !finished else {
+            completion(Data(), nil)
+            return
+        }
+        // The bridge calls read again only after this completes, so `finished` is
+        // never read and written at the same time.
+        connection.receive(minimumIncompleteLength: 1, maximumLength: Self.maxChunk) { [weak self] data, _, isComplete, error in
+            if isComplete {
+                self?.finished = true
+            }
             if let data, !data.isEmpty {
                 completion(data, nil)
             } else if let error {

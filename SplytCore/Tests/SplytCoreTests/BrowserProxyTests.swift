@@ -198,8 +198,9 @@ final class BrowserProxyServerTests: XCTestCase {
         return UInt16(bigEndian: address.sin_port)
     }
 
+    /// Slow CI machines can take seconds to bring the listeners up.
     private func awaitListening(_ port: UInt16) {
-        let deadline = Date().addingTimeInterval(3)
+        let deadline = Date().addingTimeInterval(15)
         while Date() < deadline {
             let socket = Darwin.socket(AF_INET, SOCK_STREAM, 0)
             defer { close(socket) }
@@ -218,6 +219,7 @@ final class BrowserProxyServerTests: XCTestCase {
             }
             usleep(20_000)
         }
+        XCTFail("nothing listening on port \(port)")
     }
 
     func testRelaysToPlannedTargetOnTheRequestedRoute() throws {

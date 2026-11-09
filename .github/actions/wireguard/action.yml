@@ -3,7 +3,7 @@ description: Fetches WireGuardKit at its pinned commit and builds libwg-go.a, ca
 runs:
   using: composite
   steps:
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         # WireGuardKit patches the Go runtime; this is the version it is known to build with.
         go-version: "1.27.3"
