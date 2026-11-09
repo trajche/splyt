@@ -1,4 +1,8 @@
+<p align="center"><img src="docs/icon.png" width="128" height="128" alt="Splyt icon"></p>
+
 # Splyt
+
+[![CI](https://github.com/trajche/splyt/actions/workflows/ci.yml/badge.svg)](https://github.com/trajche/splyt/actions/workflows/ci.yml)
 
 Per-app routing for macOS: each app uses the VPN, goes direct, or is blocked. It runs
 WireGuard tunnels itself, and also works with any other VPN that owns the default route.
@@ -156,6 +160,9 @@ node Firefox/test/e2e.mjs                  # real Firefox, needs a VPN on the de
 - `scripts/build-wireguard.sh`: fetches WireGuardKit at a pinned commit into
   `Vendor/`, applies `scripts/wireguard-apple.patch`, and builds `libwg-go.a`. Needs Go.
 - `scripts/firefox-extension.sh`: packages and optionally signs the extension.
+- `scripts/github-secrets.sh`: uploads signing and notary credentials for CI.
+- `.github/workflows/`: `ci.yml` tests and builds unsigned on every push; `release.yml`
+  makes the signed, notarized build.
 
 ## Build and test
 
@@ -170,3 +177,18 @@ xcodebuild -project Splyt.xcodeproj -scheme Splyt -derivedDataPath build \
 
 Installing requires a signed build. Create the App IDs, profiles and notary credentials
 once, as described at the top of `scripts/release.sh`, then run `scripts/release.sh`.
+
+## GitHub Actions
+
+`release.yml` runs `scripts/release.sh` on a GitHub macOS runner. Pushing a `v*` tag
+publishes `Splyt-<version>.zip` as a GitHub release, with the tag as the version; running
+it by hand only keeps the zip as a workflow artifact. It needs these secrets, which
+`scripts/github-secrets.sh <AuthKey_KEYID.p8>` sets with `gh` from this Mac:
+
+| Secret | Contents |
+| --- | --- |
+| `MACOS_CERTIFICATE_P12`, `MACOS_CERTIFICATE_PASSWORD` | The Developer ID Application identity the profiles name, with a random password |
+| `SPLYT_APP_PROFILE`, `SPLYT_PROXY_PROFILE` | The two Developer ID provisioning profiles |
+| `NOTARY_API_KEY`, `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID` | The App Store Connect API key used for notarization |
+
+Rerun the script after renewing the certificate or regenerating a profile.

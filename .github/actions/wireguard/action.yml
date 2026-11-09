@@ -1,0 +1,24 @@
+name: WireGuardKit
+description: Fetches WireGuardKit at its pinned commit and builds libwg-go.a, cached by pin and patch.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        # WireGuardKit patches the Go runtime; this is the version it is known to build with.
+        go-version: "1.27.3"
+        cache: false
+
+    - name: Restore WireGuardKit
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          Vendor/wireguard-apple
+          build/wireguard/libwg-go.a
+        key: wireguard-${{ runner.os }}-${{ hashFiles('scripts/build-wireguard.sh', 'scripts/wireguard-apple.patch') }}
+
+    - name: Build WireGuardKit
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: scripts/build-wireguard.sh

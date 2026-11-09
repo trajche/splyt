@@ -1,0 +1,98 @@
+name: Release
+
+# Builds a Developer ID signed, notarized Splyt.app. A pushed v* tag also
+# publishes it as a GitHub release; a manual run only keeps the artifact.
+# Secrets are set by scripts/github-secrets.sh.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  release:
+    name: Signed build
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      KEYCHAIN: ${{ runner.temp }}/signing.keychain-db
+      PROFILE_DIR: ${{ runner.temp }}/profiles
+      NOTARY_KEY: ${{ runner.temp }}/notary/AuthKey.p8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/wireguard
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Import signing certificate
+        env:
+          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          umask 077
+          password=$(openssl rand -base64 32)
+          security create-keychain -p "$password" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$password" "$KEYCHAIN"
+          certificate="$RUNNER_TEMP/certificate.p12"
+          printf '%s' "$CERTIFICATE" | base64 -D > "$certificate"
+          security import "$certificate" -k "$KEYCHAIN" -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$certificate"
+          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+
+      - name: Write provisioning profiles and notary key
+        env:
+          APP_PROFILE: ${{ secrets.SPLYT_APP_PROFILE }}
+          PROXY_PROFILE: ${{ secrets.SPLYT_PROXY_PROFILE }}
+          NOTARY_API_KEY: ${{ secrets.NOTARY_API_KEY }}
+        run: |
+          umask 077
+          mkdir -p "$PROFILE_DIR" "$(dirname "$NOTARY_KEY")"
+          printf '%s' "$APP_PROFILE" | base64 -D > "$PROFILE_DIR/app.provisionprofile"
+          printf '%s' "$PROXY_PROFILE" | base64 -D > "$PROFILE_DIR/proxy.provisionprofile"
+          printf '%s' "$NOTARY_API_KEY" | base64 -D > "$NOTARY_KEY"
+
+      - name: Version
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build, sign and notarize
+        env:
+          SPLYT_INSTALL: "0"
+          SPLYT_PROFILE_DIR: ${{ env.PROFILE_DIR }}
+          SPLYT_VERSION: ${{ steps.version.outputs.version }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: scripts/release.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Splyt
+          path: build/release/Splyt-*.zip
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/release/Splyt-*.zip --title "Splyt $GITHUB_REF_NAME" --generate-notes
+
+      - name: Clean up signing material
+        if: always()
+        run: |
+          security delete-keychain "$KEYCHAIN" 2>/dev/null || true
+          rm -rf "$PROFILE_DIR" "$(dirname "$NOTARY_KEY")"
+          rm -f "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles/"*.provisionprofile

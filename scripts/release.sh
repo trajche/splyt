@@ -1,6 +1,17 @@
 #!/bin/bash
 # Builds a Developer ID signed, notarized Splyt.app and installs it in /Applications.
 # System extensions only activate from /Applications on a Mac with SIP enabled.
+# Also leaves build/release/Splyt-<version>.zip for distribution.
+#
+# Environment, all optional:
+#   SPLYT_VERSION        marketing version, default from project.yml
+#   SPLYT_BUILD_NUMBER   build number, default the current time (yyyymmddHHMM)
+#   SPLYT_INSTALL=0      skip installing into /Applications (CI)
+#   SPLYT_PROFILE_DIR    where the downloaded profiles are, default ~/Downloads
+#   SPLYT_NOTARY_PROFILE keychain profile for notarytool, default "splyt"
+#   NOTARY_KEY, NOTARY_KEY_ID, NOTARY_ISSUER
+#                        App Store Connect API key (.p8 path) used instead of the
+#                        keychain profile (CI)
 #
 # One-time setup:
 #   1. Register App IDs in the Apple developer portal:
@@ -20,6 +31,14 @@ EXT_ID=$APP_ID.proxy
 APP_PROFILE="Splyt Developer ID"
 EXT_PROFILE="Splyt Proxy Developer ID"
 NOTARY_PROFILE=${SPLYT_NOTARY_PROFILE:-splyt}
+if [[ -n ${NOTARY_KEY:-} ]]; then
+    NOTARY_AUTH=(--key "$NOTARY_KEY" --key-id "${NOTARY_KEY_ID:?set NOTARY_KEY_ID}" --issuer "${NOTARY_ISSUER:?set NOTARY_ISSUER}")
+else
+    NOTARY_AUTH=(--keychain-profile "$NOTARY_PROFILE")
+fi
+BUILD_NUMBER=${SPLYT_BUILD_NUMBER:-$(date +%Y%m%d%H%M)}
+VERSION_SETTINGS=()
+[[ -n ${SPLYT_VERSION:-} ]] && VERSION_SETTINGS=(MARKETING_VERSION="$SPLYT_VERSION")
 PROFILE_DIR=${SPLYT_PROFILE_DIR:-$HOME/Downloads}
 INSTALLED_PROFILES="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
 ENTITLEMENTS=(app-proxy-provider-systemextension packet-tunnel-provider-systemextension)
@@ -116,8 +135,8 @@ LOCAL_CERT_SUMMARY=$(while IFS= read -r hash; do
 done <<<"$LOCAL_CERTS")
 install_profile "$APP_PROFILE" "$APP_ID"
 install_profile "$EXT_PROFILE" "$EXT_ID"
-xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null \
-    || fail "notary credentials \"$NOTARY_PROFILE\" not found, see the setup steps at the top of this script"
+xcrun notarytool history "${NOTARY_AUTH[@]}" >/dev/null \
+    || fail "notary credentials not usable, see the setup steps at the top of this script"
 
 echo "== Building WireGuard"
 # Built once; rerun scripts/build-wireguard.sh by hand after changing its pinned commit.
@@ -130,7 +149,7 @@ xcodegen generate
 # macOS only replaces an installed system extension when the build number changes.
 xcodebuild -project Splyt.xcodeproj -scheme Splyt -configuration Release \
     -derivedDataPath "$OUT/derived" -archivePath "$ARCHIVE" \
-    CURRENT_PROJECT_VERSION="$(date +%Y%m%d%H%M)" archive
+    CURRENT_PROJECT_VERSION="$BUILD_NUMBER" ${VERSION_SETTINGS[@]+"${VERSION_SETTINGS[@]}"} archive
 
 APP=$ARCHIVE/Products/Applications/Splyt.app
 EXT=$APP/Contents/Library/SystemExtensions/$EXT_ID.systemextension
@@ -143,14 +162,23 @@ verify_entitlements "$EXT" "$EXT_ID"
 echo "== Notarizing (usually a few minutes)"
 ditto -c -k --keepParent "$APP" "$OUT/Splyt.zip"
 RESULT=$OUT/notary.json
-xcrun notarytool submit "$OUT/Splyt.zip" --keychain-profile "$NOTARY_PROFILE" \
+xcrun notarytool submit "$OUT/Splyt.zip" "${NOTARY_AUTH[@]}" \
     --wait --output-format json >"$RESULT"
 if [[ $(plutil -extract status raw "$RESULT") != "Accepted" ]]; then
-    xcrun notarytool log "$(plutil -extract id raw "$RESULT")" --keychain-profile "$NOTARY_PROFILE" >&2
+    xcrun notarytool log "$(plutil -extract id raw "$RESULT")" "${NOTARY_AUTH[@]}" >&2
     fail "notarization was rejected, details above"
 fi
 xcrun stapler staple "$APP"
 spctl --assess --type execute "$APP"
+
+VERSION=$(plutil -extract CFBundleShortVersionString raw "$APP/Contents/Info.plist")
+PACKAGE=$OUT/Splyt-$VERSION.zip
+ditto -c -k --keepParent "$APP" "$PACKAGE"
+echo "Packaged $PACKAGE ($VERSION, build $BUILD_NUMBER)"
+
+if [[ ${SPLYT_INSTALL:-1} == 0 ]]; then
+    exit 0
+fi
 
 echo "== Installing"
 rm -rf /Applications/Splyt.app
