@@ -3,11 +3,13 @@ import SwiftUI
 @main
 struct SplytApp: App {
     @State private var model = AppModel()
+    @State private var updater = Updater()
 
     var body: some Scene {
         Window("Splyt", id: WindowID.main) {
             MainView()
                 .environment(model)
+                .environment(updater)
                 .frame(minWidth: 720, minHeight: 480)
         }
         .defaultSize(width: 820, height: 560)
@@ -16,6 +18,7 @@ struct SplytApp: App {
         MenuBarExtra {
             MenuPanel()
                 .environment(model)
+                .environment(updater)
         } label: {
             Image(systemName: model.menuBarSymbol)
         }

@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(Updater.self) private var updater
     @State private var confirmingUninstall = false
     @State private var importingWireGuard = false
 
@@ -84,6 +85,29 @@ struct SettingsView: View {
                 Text("NetBird")
             } footer: {
                 Text("Shows the exit nodes of an installed NetBird client in the menu, so they can be switched from Splyt. Splyt splits traffic around any VPN without this.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                LabeledContent("Version", value: updater.version)
+                Toggle("Check for updates automatically", isOn: Binding(
+                    get: { updater.automaticallyChecks },
+                    set: { updater.setAutomaticallyChecks($0) }
+                ))
+                Toggle("Install updates automatically", isOn: Binding(
+                    get: { updater.automaticallyInstalls },
+                    set: { updater.setAutomaticallyInstalls($0) }
+                ))
+                .disabled(!updater.automaticallyChecks)
+                Button("Check for Updates...") {
+                    updater.checkForUpdates()
+                }
+                .disabled(!updater.canCheck)
+            } header: {
+                Text("Updates")
+            } footer: {
+                Text("Updates come from Splyt's GitHub releases and are verified before they are installed.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

@@ -81,17 +81,33 @@ jobs:
           NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER_ID }}
         run: SPLYT_PROFILE_DIR="$PROFILE_DIR" scripts/release.sh
 
+      - name: Write update feed
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          app=build/release/Splyt.xcarchive/Products/Applications/Splyt.app
+          version=$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")
+          zip=build/release/Splyt-$version.zip
+          scripts/appcast.sh "$app" "$zip" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/v$version/Splyt-$version.zip" \
+            build/release/appcast.xml
+
       - uses: actions/upload-artifact@v7
         with:
           name: Splyt
-          path: build/release/Splyt-*.zip
+          path: |
+            build/release/Splyt-*.zip
+            build/release/appcast.xml
           if-no-files-found: error
 
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" build/release/Splyt-*.zip --title "Splyt $GITHUB_REF_NAME" --generate-notes
+        # appcast.xml on the latest release is the feed installed copies check.
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/release/Splyt-*.zip build/release/appcast.xml \
+            --title "Splyt $GITHUB_REF_NAME" --generate-notes
 
       - name: Clean up signing material
         if: always()

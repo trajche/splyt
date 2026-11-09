@@ -178,6 +178,23 @@ xcodebuild -project Splyt.xcodeproj -scheme Splyt -derivedDataPath build \
 Installing requires a signed build. Create the App IDs, profiles and notary credentials
 once, as described at the top of `scripts/release.sh`, then run `scripts/release.sh`.
 
+## Updates
+
+Splyt updates itself with [Sparkle](https://sparkle-project.org). It checks
+`https://github.com/trajche/splyt/releases/latest/download/appcast.xml` once a day; the
+Release workflow attaches that file to every GitHub release, so no other server is
+involved. Settings has the switches and a **Check for Updates...** button, and the menu
+shows when an update is waiting.
+
+An update is installed only if its archive carries an Ed25519 signature from the key in
+`SUPublicEDKey`, and its code signature matches the installed app. `scripts/sparkle-key.sh`
+creates that key once: the public half goes into `App/Info.plist`, the private half into
+the login keychain and the `SPARKLE_ED_PRIVATE_KEY` secret. If the private key is lost,
+installed copies cannot be updated and must be reinstalled by hand.
+
+`scripts/sign-sparkle.sh` runs as a build phase and re-signs Sparkle's helper tools with
+the Developer ID certificate, which notarization requires.
+
 ## GitHub Actions
 
 `release.yml` runs `scripts/release.sh` on a GitHub macOS runner. Pushing a `v*` tag
@@ -190,5 +207,6 @@ it by hand only keeps the zip as a workflow artifact. It needs these secrets, wh
 | `MACOS_CERTIFICATE_P12`, `MACOS_CERTIFICATE_PASSWORD` | The Developer ID Application identity the profiles name, with a random password |
 | `SPLYT_APP_PROFILE`, `SPLYT_PROXY_PROFILE` | The two Developer ID provisioning profiles |
 | `NOTARY_API_KEY`, `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID` | The App Store Connect API key used for notarization |
+| `SPARKLE_ED_PRIVATE_KEY` | The update signing key, set by `scripts/sparkle-key.sh` |
 
 Rerun the script after renewing the certificate or regenerating a profile.

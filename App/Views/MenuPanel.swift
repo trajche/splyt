@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MenuPanel: View {
     @Environment(AppModel.self) private var model
+    @Environment(Updater.self) private var updater
     @Environment(\.openWindow) private var openWindow
 
     private static let maxRows = 8
@@ -49,6 +50,19 @@ struct MenuPanel: View {
                     Text("\(model.config.rules.count - Self.maxRows) more in Splyt")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            if let version = updater.availableVersion {
+                Divider()
+                HStack {
+                    Label("Splyt \(version) is available", systemImage: "arrow.down.circle.fill")
+                        .foregroundStyle(.tint)
+                    Spacer()
+                    Button("Update...") {
+                        updater.checkForUpdates()
+                    }
+                    .controlSize(.small)
                 }
             }
 
