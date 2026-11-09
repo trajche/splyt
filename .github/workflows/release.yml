@@ -21,7 +21,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Paths
         run: |
@@ -81,7 +81,7 @@ jobs:
           NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER_ID }}
         run: SPLYT_PROFILE_DIR="$PROFILE_DIR" scripts/release.sh
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: Splyt
           path: build/release/Splyt-*.zip
