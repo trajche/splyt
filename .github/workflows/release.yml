@@ -20,12 +20,16 @@ jobs:
     name: Signed build
     runs-on: macos-26
     timeout-minutes: 60
-    env:
-      KEYCHAIN: ${{ runner.temp }}/signing.keychain-db
-      PROFILE_DIR: ${{ runner.temp }}/profiles
-      NOTARY_KEY: ${{ runner.temp }}/notary/AuthKey.p8
     steps:
       - uses: actions/checkout@v4
+
+      - name: Paths
+        run: |
+          {
+            echo "KEYCHAIN=$RUNNER_TEMP/signing.keychain-db"
+            echo "PROFILE_DIR=$RUNNER_TEMP/profiles"
+            echo "NOTARY_KEY=$RUNNER_TEMP/notary/AuthKey.p8"
+          } >> "$GITHUB_ENV"
 
       - uses: ./.github/actions/wireguard
 
@@ -72,11 +76,10 @@ jobs:
       - name: Build, sign and notarize
         env:
           SPLYT_INSTALL: "0"
-          SPLYT_PROFILE_DIR: ${{ env.PROFILE_DIR }}
           SPLYT_VERSION: ${{ steps.version.outputs.version }}
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER_ID }}
-        run: scripts/release.sh
+        run: SPLYT_PROFILE_DIR="$PROFILE_DIR" scripts/release.sh
 
       - uses: actions/upload-artifact@v4
         with:
