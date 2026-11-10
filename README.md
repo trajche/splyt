@@ -192,6 +192,22 @@ creates that key once: the public half goes into `App/Info.plist`, the private h
 the login keychain and the `SPARKLE_ED_PRIVATE_KEY` secret. If the private key is lost,
 installed copies cannot be updated and must be reinstalled by hand.
 
+Keep that key for good. Never run `scripts/sparkle-key.sh --replace` on a released app:
+every installed copy trusts only the current key, so a new one cuts them all off. The
+keychain item (service `com.amplify2.splyt.sparkle`) is the backup; if the secret goes
+missing, put it back without the key touching disk or the screen:
+
+```sh
+security find-generic-password -s com.amplify2.splyt.sparkle -a sparkle-ed25519 -w \
+    | base64 -d | gh secret set SPARKLE_ED_PRIVATE_KEY --repo trajche/splyt
+```
+
+Back the keychain item up somewhere off this Mac as well, such as a password manager.
+
+To ship an update, raise `MARKETING_VERSION` in `project.yml`, commit, and push a tag
+`v<version>`. The Release workflow builds, notarizes and publishes it, and installed copies
+pick it up on their next check.
+
 `scripts/sign-sparkle.sh` runs as a build phase and re-signs Sparkle's helper tools with
 the Developer ID certificate, which notarization requires.
 
