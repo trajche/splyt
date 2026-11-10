@@ -31,7 +31,7 @@ struct AppsView: View {
                         .foregroundStyle(.secondary)
                 }
                 ForEach(model.config.rules) { rule in
-                    RuleRow(rule: rule)
+                    RuleRow(rule: rule, removable: true)
                         .contextMenu {
                             Button("Remove Rule", role: .destructive) {
                                 model.remove(rule)

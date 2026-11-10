@@ -70,6 +70,8 @@ struct RuleRow: View {
     @Environment(AppModel.self) private var model
     let rule: AppRule
     var iconSize: CGFloat = 24
+    /// Shows a trash button after the picker.
+    var removable = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -82,7 +84,30 @@ struct RuleRow: View {
                 get: { model.route(for: rule) },
                 set: { model.setRoute($0, for: rule) }
             ))
+            if removable {
+                RemoveButton {
+                    model.remove(rule)
+                }
+                .help("Remove \(rule.name)")
+            }
         }
+    }
+}
+
+/// A quiet trash icon that turns red under the pointer.
+private struct RemoveButton: View {
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "trash")
+                .foregroundStyle(hovering ? AnyShapeStyle(.red) : AnyShapeStyle(.tertiary))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .onHover { hovering = $0 }
+        .accessibilityLabel("Remove")
     }
 }
 
